@@ -1,0 +1,13 @@
+{
+    "name": "calculator-api-node",
+    "version": "1.0.0",
+    "description": "API Node.js simple de calculatrice avec Jest et Docker",
+    "main": "src/server.js",
+    "scripts": {
+        "start": "node src/server.js",
+        "test": "jest"
+    },
+    "devDependencies": {
+        "jest": "^29.7.0"
+    }
+}

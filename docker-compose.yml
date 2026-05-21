@@ -1,0 +1,17 @@
+services:
+  api:
+    build: .
+    container_name: node-calculator-api
+    ports:
+      - "8000:3000"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+
+  test:
+    build: .
+    container_name: node-calculator-test
+    command: npm test
+    volumes:
+      - ./:/app
+      - /app/node_modules
