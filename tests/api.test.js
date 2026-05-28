@@ -1,30 +1,6 @@
 const http = require("http");
 const { requestHandler } = require("../src/server");
-
-/**
- * Helper : envoie une requ\u00eate HTTP \u00e0 l'instance de test.
- * R\u00e9sout avec { status, headers, body }.
- * body vaut null si la r\u00e9ponse n'a pas de contenu (ex: OPTIONS 204).
- */
-function request(server, path, method = "GET") {
-    return new Promise((resolve, reject) => {
-        const addr = server.address();
-        const req = http.request(
-            { hostname: "127.0.0.1", port: addr.port, path, method },
-            (res) => {
-                let data = "";
-                res.on("data", (chunk) => { data += chunk; });
-                res.on("end", () => resolve({
-                    status: res.statusCode,
-                    headers: res.headers,
-                    body: data ? JSON.parse(data) : null,
-                }));
-            }
-        );
-        req.on("error", reject);
-        req.end();
-    });
-}
+const { request } = require("./helpers/http");
 
 describe("API /calculate", () => {
     let server;
@@ -38,9 +14,22 @@ describe("API /calculate", () => {
         server.close(done);
     });
 
-    // \u2500\u2500\u2500 Headers communs \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-    describe("Headers de r\u00e9ponse", () => {
-        it("devrait retourner Content-Type application/json sur une requ\u00eate valide", async () => {
+    // ─── Performance ──────────────────────────────────────────────────────────
+    describe("Performance", () => {
+        it("devrait répondre en moins de 100ms sur une requête valide", async () => {
+            const { duration } = await request(server, "/calculate?operation=add&a=1&b=2");
+            expect(duration).toBeLessThan(100);
+        });
+
+        it("devrait répondre en moins de 100ms sur une erreur 400", async () => {
+            const { duration } = await request(server, "/calculate?operation=add&a=2");
+            expect(duration).toBeLessThan(100);
+        });
+    });
+
+    // ─── Headers communs ──────────────────────────────────────────────────────
+    describe("Headers de réponse", () => {
+        it("devrait retourner Content-Type application/json sur une requête valide", async () => {
             const { headers } = await request(server, "/calculate?operation=add&a=1&b=2");
             expect(headers["content-type"]).toMatch(/application\/json/);
         });
@@ -61,92 +50,98 @@ describe("API /calculate", () => {
         });
     });
 
-    // \u2500\u2500\u2500 Preflight CORS (OPTIONS) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-    describe("OPTIONS /calculate \u2014 preflight CORS", () => {
-        it("devrait retourner 204 sans body pour une requ\u00eate OPTIONS", async () => {
+    // ─── Preflight CORS (OPTIONS) ─────────────────────────────────────────────
+    describe("OPTIONS /calculate — preflight CORS", () => {
+        it("devrait retourner 204 sans body pour une requête OPTIONS", async () => {
             const { status, body } = await request(server, "/calculate", "OPTIONS");
             expect(status).toBe(204);
             expect(body).toBeNull();
         });
 
-        it("devrait retourner les headers CORS n\u00e9cessaires sur OPTIONS", async () => {
+        it("devrait retourner les headers CORS nécessaires sur OPTIONS", async () => {
             const { headers } = await request(server, "/calculate", "OPTIONS");
             expect(headers["access-control-allow-origin"]).toBe("*");
             expect(headers["access-control-allow-methods"]).toMatch(/GET/);
         });
     });
 
-    // \u2500\u2500\u2500 Cas nominaux \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-    describe("GET /calculate \u2014 cas nominaux", () => {
+    // ─── Cas nominaux ─────────────────────────────────────────────────────────
+    describe("GET /calculate — cas nominaux", () => {
         it.each`
             operation      | a     | b    | expected
             ${'add'}       | ${2}  | ${3} | ${5}
             ${'subtract'}  | ${10} | ${4} | ${6}
             ${'multiply'}  | ${6}  | ${7} | ${42}
             ${'divide'}    | ${20} | ${5} | ${4}
+            ${'add'}       | ${-5} | ${-3}| ${-8}
+            ${'subtract'}  | ${-5} | ${-3}| ${-2}
+            ${'multiply'}  | ${-3} | ${-4}| ${12}
+            ${'divide'}    | ${-10}| ${-2}| ${5}
         `("devrait retourner 200 pour $operation($a, $b) = $expected", async ({ operation, a, b, expected }) => {
             const { status, body } = await request(
                 server, `/calculate?operation=${operation}&a=${a}&b=${b}`
             );
             expect(status).toBe(200);
-            expect(body.result).toBe(expected);
-            expect(body.operation).toBe(operation);
-            expect(body.a).toBe(a);
-            expect(body.b).toBe(b);
+            expect(body).toMatchObject({
+                operation,
+                a,
+                b,
+                result: expected,
+            });
         });
 
-        it("devrait retourner un r\u00e9sultat d\u00e9cimal pour une division non enti\u00e8re", async () => {
+        it("devrait retourner un résultat décimal pour une division non entière", async () => {
             const { status, body } = await request(server, "/calculate?operation=divide&a=10&b=3");
             expect(status).toBe(200);
             expect(body.result).toBeCloseTo(3.333);
         });
     });
 
-    // \u2500\u2500\u2500 Erreurs 400 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-    describe("GET /calculate \u2014 erreurs 400", () => {
-        it("devrait retourner 400 quand on divise par z\u00e9ro", async () => {
+    // ─── Erreurs 400 ──────────────────────────────────────────────────────────
+    describe("GET /calculate — erreurs 400", () => {
+        it("devrait retourner 400 avec la structure d'erreur correcte quand on divise par zéro", async () => {
             const { status, body } = await request(server, "/calculate?operation=divide&a=10&b=0");
             expect(status).toBe(400);
-            expect(body.error).toBe("Division par z\u00e9ro impossible.");
+            expect(body).toMatchObject({ error: "Division par zéro impossible." });
         });
 
-        it("devrait retourner 400 quand le param\u00e8tre b est manquant", async () => {
+        it("devrait retourner 400 quand le paramètre b est manquant", async () => {
             const { status, body } = await request(server, "/calculate?operation=add&a=2");
             expect(status).toBe(400);
-            expect(body.error).toMatch(/Param\u00e8tres attendus/);
+            expect(body.error).toMatch(/Paramètres attendus/);
         });
 
-        it("devrait retourner 400 quand le param\u00e8tre a est manquant", async () => {
+        it("devrait retourner 400 quand le paramètre a est manquant", async () => {
             const { status, body } = await request(server, "/calculate?operation=add&b=2");
             expect(status).toBe(400);
-            expect(body.error).toMatch(/Param\u00e8tres attendus/);
+            expect(body.error).toMatch(/Paramètres attendus/);
         });
 
         it("devrait retourner 400 quand a n'est pas un nombre", async () => {
             const { status, body } = await request(server, "/calculate?operation=add&a=abc&b=3");
             expect(status).toBe(400);
-            expect(body.error).toMatch(/doivent \u00eatre des nombres/);
+            expect(body.error).toMatch(/doivent être des nombres/);
         });
 
         it("devrait retourner 400 quand b n'est pas un nombre", async () => {
             const { status, body } = await request(server, "/calculate?operation=add&a=3&b=abc");
             expect(status).toBe(400);
-            expect(body.error).toMatch(/doivent \u00eatre des nombres/);
+            expect(body.error).toMatch(/doivent être des nombres/);
         });
 
-        it("devrait retourner 400 pour une op\u00e9ration inconnue", async () => {
+        it("devrait retourner 400 pour une opération inconnue", async () => {
             const { status, body } = await request(server, "/calculate?operation=modulo&a=10&b=3");
             expect(status).toBe(400);
-            expect(body.error).toMatch(/Op\u00e9ration inconnue/);
+            expect(body.error).toMatch(/Opération inconnue/);
         });
     });
 
-    // \u2500\u2500\u2500 Autres routes \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-    describe("GET \u2014 autres routes", () => {
-        it("devrait retourner 404 pour une route inconnue", async () => {
+    // ─── Autres routes ────────────────────────────────────────────────────────
+    describe("GET — autres routes", () => {
+        it("devrait retourner 404 avec la structure d'erreur correcte pour une route inconnue", async () => {
             const { status, body } = await request(server, "/unknown");
             expect(status).toBe(404);
-            expect(body.error).toBe("Route introuvable.");
+            expect(body).toMatchObject({ error: "Route introuvable." });
         });
     });
 });
