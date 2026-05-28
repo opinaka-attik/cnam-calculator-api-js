@@ -5,12 +5,14 @@
     "main": "src/server.js",
     "scripts": {
         "start": "node src/server.js",
+        "lint": "eslint src/ tests/",
         "test": "jest",
         "test:unit": "jest tests/calculator.test.js",
         "test:integration": "jest tests/api.test.js",
         "test:coverage": "jest --coverage"
     },
     "devDependencies": {
+        "eslint": "^9.0.0",
         "jest": "^29.7.0"
     }
 }
