@@ -114,13 +114,6 @@ describe("API /calculate", () => {
             expect(body).not.toHaveProperty("error");
         });
 
-        // Test #6 — POST /calculate : comportement actuel (non documenté)
-        it("[design] POST /calculate doit retourner 404 (méthodes autorisées : GET uniquement)", async () => {
-            const { status, body } = await request(server, "/calculate?operation=add&a=1&b=2", "POST");
-            expect(status).toBe(404);
-            expect(body).toHaveProperty("error");
-        });
-
         // Test #7 — a= vide : comportement actuel (Number('') === 0, coercé silencieusement)
         it("[design] a= vide est silencieusement coercé en 0 (Number('') === 0), documente le comportement actuel", async () => {
             const { status, body } = await request(server, "/calculate?operation=add&a=&b=2");
@@ -131,6 +124,26 @@ describe("API /calculate", () => {
             } else {
                 expect(body).toHaveProperty("error");
             }
+        });
+    });
+
+    // ─── Méthode non autorisée ────────────────────────────────────────────────────
+    describe("Méthode non autorisée", () => {
+        // Test #6 — POST /calculate doit retourner 405 (fix du bug de design)
+        it("[design] POST /calculate doit retourner 405 Method Not Allowed", async () => {
+            const { status, body } = await request(server, "/calculate?operation=add&a=1&b=2", "POST");
+            expect(status).toBe(405);
+            expect(body).toHaveProperty("error");
+        });
+
+        it("[design] POST /calculate doit retourner le header Allow: GET, OPTIONS", async () => {
+            const { headers } = await request(server, "/calculate?operation=add&a=1&b=2", "POST");
+            expect(headers["allow"]).toMatch(/GET/);
+        });
+
+        it("[design] PUT /calculate doit retourner 405 Method Not Allowed", async () => {
+            const { status } = await request(server, "/calculate?operation=add&a=1&b=2", "PUT");
+            expect(status).toBe(405);
         });
     });
 
