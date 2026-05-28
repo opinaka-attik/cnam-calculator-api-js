@@ -25,6 +25,19 @@ function requestHandler(req, res) {
         return;
     }
 
+    if (req.method !== "GET") {
+        res.statusCode = 405;
+        res.setHeader("Allow", "GET, OPTIONS");
+        res.end(
+            JSON.stringify(
+                { error: "Méthode non autorisée. Utiliser GET." },
+                null,
+                2
+            )
+        );
+        return;
+    }
+
     if (pathname !== "/calculate") {
         res.statusCode = 404;
         res.end(JSON.stringify({ error: "Route introuvable." }, null, 2));
