@@ -29,9 +29,10 @@ describe("API /calculate", () => {
 
     // ─── Headers communs ──────────────────────────────────────────────────────
     describe("Headers de réponse", () => {
-        it("devrait retourner Content-Type application/json sur une requête valide", async () => {
+        // Assertion stricte sur le Content-Type complet (charset inclus)
+        it("devrait retourner Content-Type application/json; charset=utf-8 (strict) sur une requête valide", async () => {
             const { headers } = await request(server, "/calculate?operation=add&a=1&b=2");
-            expect(headers["content-type"]).toMatch(/application\/json/);
+            expect(headers["content-type"]).toBe("application/json; charset=utf-8");
         });
 
         it("devrait retourner le header CORS Access-Control-Allow-Origin: *", async () => {
@@ -39,14 +40,14 @@ describe("API /calculate", () => {
             expect(headers["access-control-allow-origin"]).toBe("*");
         });
 
-        it("devrait retourner Content-Type application/json sur une erreur 400", async () => {
+        it("devrait retourner Content-Type application/json; charset=utf-8 (strict) sur une erreur 400", async () => {
             const { headers } = await request(server, "/calculate?operation=add&a=2");
-            expect(headers["content-type"]).toMatch(/application\/json/);
+            expect(headers["content-type"]).toBe("application/json; charset=utf-8");
         });
 
-        it("devrait retourner Content-Type application/json sur une erreur 404", async () => {
+        it("devrait retourner Content-Type application/json; charset=utf-8 (strict) sur une erreur 404", async () => {
             const { headers } = await request(server, "/unknown");
-            expect(headers["content-type"]).toMatch(/application\/json/);
+            expect(headers["content-type"]).toBe("application/json; charset=utf-8");
         });
     });
 
@@ -117,7 +118,6 @@ describe("API /calculate", () => {
         // Test #7 — a= vide : comportement actuel (Number('') === 0, coercé silencieusement)
         it("[design] a= vide est silencieusement coercé en 0 (Number('') === 0), documente le comportement actuel", async () => {
             const { status, body } = await request(server, "/calculate?operation=add&a=&b=2");
-            // Number('') === 0 → le serveur calcule 0 + 2 = 2 et renvoie 200
             expect([200, 400]).toContain(status);
             if (status === 200) {
                 expect(body).toHaveProperty("result");
@@ -125,11 +125,36 @@ describe("API /calculate", () => {
                 expect(body).toHaveProperty("error");
             }
         });
+
+        // [EDGE] Très grandes valeurs — déborde vers Infinity
+        it("[edge] add(1e308, 1e308) doit retourner Infinity (débordement flottant JS)", async () => {
+            const { status, body } = await request(server, "/calculate?operation=add&a=1e308&b=1e308");
+            expect(status).toBe(200);
+            // JSON.parse("Infinity") n'existe pas — le serveur serialise null ou une chaîne
+            // On documente le comportement réel : result est null ou une chaîne représentant Infinity
+            expect([null, "Infinity", Infinity]).toContain(body.result);
+        });
+
+        it("[edge] multiply(1e308, 1e308) doit retourner Infinity (débordement flottant JS)", async () => {
+            const { status, body } = await request(server, "/calculate?operation=multiply&a=1e308&b=1e308");
+            expect(status).toBe(200);
+            expect([null, "Infinity", Infinity]).toContain(body.result);
+        });
+
+        // [EDGE] a=-0 : Number('-0') === 0 en JS mais Object.is(-0, 0) === false
+        it("[edge] a=-0 est accepté (Number('-0') === 0 en comparaison ==), documente le comportement actuel", async () => {
+            const { status, body } = await request(server, "/calculate?operation=add&a=-0&b=5");
+            expect(status).toBe(200);
+            // Number('-0') vaut -0 en JS mais JSON.stringify(-0) vaut '0'
+            // Le résultat attendu est 5 (0 + 5)
+            expect(body.result).toBe(5);
+            // Le champ 'a' dans la réponse JSON sera 0 (JSON.stringify sérialise -0 en 0)
+            expect(body.a).toBe(0);
+        });
     });
 
-    // ─── Méthode non autorisée ────────────────────────────────────────────────────
+    // ─── Méthode non autorisée ───────────────────────────────────────────────────
     describe("Méthode non autorisée", () => {
-        // Test #6 — POST /calculate doit retourner 405 (fix du bug de design)
         it("[design] POST /calculate doit retourner 405 Method Not Allowed", async () => {
             const { status, body } = await request(server, "/calculate?operation=add&a=1&b=2", "POST");
             expect(status).toBe(405);
@@ -185,14 +210,12 @@ describe("API /calculate", () => {
             expect(body.error).toMatch(/Opération inconnue/);
         });
 
-        // Test #10 — operation absent → 400
         it("devrait retourner 400 quand le paramètre operation est absent", async () => {
             const { status, body } = await request(server, "/calculate?a=5&b=3");
             expect(status).toBe(400);
             expect(body.error).toMatch(/Paramètres attendus/);
         });
 
-        // Test #9b — contrat JSON erreur : pas de champ result dans une réponse d'erreur
         it("[contrat JSON] la réponse d'erreur 400 ne doit pas contenir de champ result", async () => {
             const { status, body } = await request(server, "/calculate?operation=add&a=2");
             expect(status).toBe(400);
@@ -207,6 +230,19 @@ describe("API /calculate", () => {
             const { status, body } = await request(server, "/unknown");
             expect(status).toBe(404);
             expect(body).toMatchObject({ error: "Route introuvable." });
+        });
+
+        // [EDGE] GET / (racine) — non documenté, retourne 404
+        it("[edge] GET / (racine) doit retourner 404 avec la structure d'erreur correcte", async () => {
+            const { status, body } = await request(server, "/");
+            expect(status).toBe(404);
+            expect(body).toHaveProperty("error");
+        });
+
+        it("[edge] GET /calculate/ (slash final) doit retourner 404", async () => {
+            const { status, body } = await request(server, "/calculate/");
+            expect(status).toBe(404);
+            expect(body).toHaveProperty("error");
         });
     });
 });
