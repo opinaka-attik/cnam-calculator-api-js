@@ -7,7 +7,8 @@
         "start": "node src/server.js",
         "test": "jest",
         "test:unit": "jest tests/calculator.test.js",
-        "test:integration": "jest tests/api.test.js"
+        "test:integration": "jest tests/api.test.js",
+        "test:coverage": "jest --coverage"
     },
     "devDependencies": {
         "jest": "^29.7.0"
