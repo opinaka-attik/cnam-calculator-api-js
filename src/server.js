@@ -1,13 +1,13 @@
-
 const http = require("http");
 const url = require("url");
 const Calculator = require("./calculator");
 
 const calculator = new Calculator();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 /**
  * Fonction qui gère les requêtes HTTP.
+ * Exportée pour permettre les tests d'intégration.
  */
 function requestHandler(req, res) {
     const parsedUrl = url.parse(req.url, true);
@@ -111,6 +111,10 @@ function requestHandler(req, res) {
 
 const server = http.createServer(requestHandler);
 
-server.listen(PORT, () => {
-    console.log(`Serveur démarré sur http://localhost:${PORT}`);
-});
+if (require.main === module) {
+    server.listen(PORT, () => {
+        console.log(`Serveur démarré sur http://localhost:${PORT}`);
+    });
+}
+
+module.exports = { requestHandler, server };

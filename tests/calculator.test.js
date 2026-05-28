@@ -8,82 +8,91 @@ describe("Calculator", () => {
     });
 
     describe("add", () => {
-        test("devrait additionner deux nombres positifs", () => {
+        it("devrait additionner deux nombres positifs", () => {
             expect(calculator.add(2, 3)).toBe(5);
         });
 
-        test("devrait additionner un nombre négatif et un nombre positif", () => {
+        it("devrait additionner deux nombres négatifs", () => {
+            expect(calculator.add(-5, -3)).toBe(-8);
+        });
+
+        it("devrait additionner un nombre négatif et un nombre positif", () => {
             expect(calculator.add(-5, 3)).toBe(-2);
         });
 
-        test("devrait retourner le même nombre quand on ajoute zéro", () => {
+        it("devrait retourner le même nombre quand on ajoute zéro", () => {
             expect(calculator.add(7, 0)).toBe(7);
         });
 
-        test("devrait additionner deux nombres décimaux", () => {
+        it("devrait additionner deux nombres décimaux", () => {
             expect(calculator.add(0.1, 0.2)).toBeCloseTo(0.3);
         });
     });
 
     describe("subtract", () => {
-        test("devrait soustraire deux nombres positifs", () => {
+        it("devrait soustraire deux nombres positifs", () => {
             expect(calculator.subtract(10, 4)).toBe(6);
         });
 
-        test("devrait retourner un nombre négatif quand b est plus grand que a", () => {
+        it("devrait retourner un nombre négatif quand b est plus grand que a", () => {
             expect(calculator.subtract(3, 10)).toBe(-7);
         });
 
-        test("devrait retourner le même nombre quand on soustrait zéro", () => {
+        it("devrait retourner le même nombre quand on soustrait zéro", () => {
             expect(calculator.subtract(5, 0)).toBe(5);
         });
 
-        test("devrait soustraire deux nombres négatifs", () => {
+        it("devrait soustraire deux nombres négatifs", () => {
             expect(calculator.subtract(-5, -3)).toBe(-2);
+        });
+
+        it("devrait soustraire deux nombres décimaux", () => {
+            expect(calculator.subtract(0.3, 0.1)).toBeCloseTo(0.2);
         });
     });
 
     describe("multiply", () => {
-        test("devrait multiplier deux nombres positifs", () => {
+        it("devrait multiplier deux nombres positifs", () => {
             expect(calculator.multiply(6, 7)).toBe(42);
         });
 
-        test("devrait retourner zéro quand un des opérandes est zéro", () => {
+        it("devrait retourner zéro quand un des opérandes est zéro", () => {
             expect(calculator.multiply(0, 999)).toBe(0);
         });
 
-        test("devrait retourner un nombre positif en multipliant deux négatifs", () => {
+        it("devrait retourner un nombre positif en multipliant deux négatifs", () => {
             expect(calculator.multiply(-3, -4)).toBe(12);
         });
 
-        test("devrait retourner un nombre négatif en multipliant un positif et un négatif", () => {
+        it("devrait retourner un nombre négatif en multipliant un positif et un négatif", () => {
             expect(calculator.multiply(3, -4)).toBe(-12);
+        });
+
+        it("devrait multiplier deux nombres décimaux", () => {
+            expect(calculator.multiply(0.1, 0.2)).toBeCloseTo(0.02);
         });
     });
 
     describe("divide", () => {
-        test("devrait diviser deux nombres positifs", () => {
+        it("devrait diviser deux nombres positifs", () => {
             expect(calculator.divide(20, 5)).toBe(4);
         });
 
-        test("devrait retourner un nombre décimal pour une division non entière", () => {
+        it("devrait retourner un nombre décimal pour une division non entière", () => {
             expect(calculator.divide(10, 3)).toBeCloseTo(3.333);
         });
 
-        test("devrait retourner zéro quand le numérateur est zéro", () => {
+        it("devrait retourner zéro quand le numérateur est zéro", () => {
             expect(calculator.divide(0, 5)).toBe(0);
         });
 
-        test("devrait diviser deux nombres négatifs", () => {
+        it("devrait diviser deux nombres négatifs", () => {
             expect(calculator.divide(-10, -2)).toBe(5);
         });
 
-        test("devrait lever une erreur quand on divise par zéro", () => {
-            expect(() => calculator.divide(10, 0)).toThrow("Division par zéro impossible.");
-        });
-
-        test("devrait lever une erreur de type Error quand on divise par zéro", () => {
-            expect(() => calculator.divide(10, 0)).toThrow(Error);
+        it("devrait lever une erreur de type Error avec le bon message quand on divise par zéro", () => {
+            expect(() => calculator.divide(10, 0))
+                .toThrow(new Error("Division par zéro impossible."));
         });
     });
 });

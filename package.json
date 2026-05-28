@@ -5,7 +5,9 @@
     "main": "src/server.js",
     "scripts": {
         "start": "node src/server.js",
-        "test": "jest"
+        "test": "jest",
+        "test:unit": "jest tests/calculator.test.js",
+        "test:integration": "jest tests/api.test.js"
     },
     "devDependencies": {
         "jest": "^29.7.0"
