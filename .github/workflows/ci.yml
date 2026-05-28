@@ -20,10 +20,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20.x"
-          cache: "npm"
 
       - name: Installation des dependances
-        run: npm ci
+        run: npm install
 
       - name: Analyse ESLint
         run: npm run lint
@@ -46,10 +45,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-          cache: "npm"
 
       - name: Installation des dependances
-        run: npm ci
+        run: npm install
 
       - name: Tests complets + couverture (--ci)
         run: npm run test:ci
